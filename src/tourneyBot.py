@@ -1,6 +1,6 @@
 import os
 import discord
-from tournament import teamCreator, InvalidTournamentException
+from tournament import teamCreator, tournamentGenerator, InvalidTournamentException
 from dotenv import load_dotenv
 
 
@@ -24,6 +24,7 @@ class MyClient(discord.Client):
         self.bot_id = ""
         self.my_emojis = ["🔁", "✅"]
         self.current_team_message = None
+        self.teams = []
 
     async def on_ready(self):
         """
@@ -49,6 +50,7 @@ class MyClient(discord.Client):
         ):
             await self.current_team_message.delete()
             teams = teamCreator(self.players)
+            self.teams = teams
             teams_message = "\n".join(
                 [f"Team {i+1}: {' '.join(players)}" for i, players in enumerate(teams)]
             )
@@ -66,6 +68,9 @@ class MyClient(discord.Client):
         ):
             for emoji in self.my_emojis:
                 await self.current_team_message.remove_reaction(emoji, self.user)
+            await self.current_team_message.channel.send(
+                f"```{tournamentGenerator(self.teams)}```"
+            )
             self.current_team_message = None
 
     async def on_message(self, message):
@@ -89,18 +94,19 @@ class MyClient(discord.Client):
                         member.name for member in message.author.voice.channel.members
                     ]
                     # Use this for testing
-                    # self.players = [
-                    #     "Player1",
-                    #     "Player2",
-                    #     "Player3",
-                    #     "Player4",
-                    #     "Player5",
-                    #     "Player6",
-                    #     "Player7",
-                    #     "Player8",
-                    # ]
+                    self.players = [
+                        "Player1",
+                        "Player2",
+                        "Player3",
+                        "Player4",
+                        "Player5",
+                        "Player6",
+                        "Player7",
+                        "Player8",
+                    ]
                     try:
                         teams = teamCreator(self.players)
+                        self.teams = teams
                         teams_message = "\n".join(
                             [
                                 f"Team {i+1}: {' '.join(players)}"
@@ -116,7 +122,6 @@ class MyClient(discord.Client):
                             await created_message.add_reaction(emoji)
                     except InvalidTournamentException as e:
                         await message.channel.send(f"```Error: {e}```")
-        print(f"Message from {message.author}: {message.content}")
 
 
 def main():

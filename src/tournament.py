@@ -34,3 +34,24 @@ def teamCreator(players: list[str]) -> list[list[str]]:
         return [players[i : i + 3] for i in range(0, len(players), 3)]
 
     raise InvalidTournamentException("Tournament size not supported")
+
+
+def tournamentGenerator(teams: list[list[str]]) -> str:
+    """
+    Generate a tournament based on the teams.
+
+    Args:
+        teams (list[list[str]]): A list of teams, where each team is represented as a list of player names.
+
+    Returns:
+        str: A string representation of the tournament.
+
+    """
+    random.shuffle(teams)
+    # return team 1 vs team 2, team 3 vs team 4, etc.
+    return "\n".join(
+        [
+            f"{' '.join(teams[i])} vs {' '.join(teams[i+1])}"
+            for i in range(0, len(teams), 2)
+        ]
+    )
