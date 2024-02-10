@@ -4,7 +4,7 @@ from src.tournament import teamCreator, InvalidTournamentException
 
 
 @patch("src.tournament.random.shuffle", lambda x: x)
-def testTwoVTwoTournamentCreator():
+def testTwoVTwoTeamCreator():
     # Test case 1: TwoVTwo tournament with 8 players
     players = [
         "Player1",
@@ -26,7 +26,7 @@ def testTwoVTwoTournamentCreator():
 
 
 @patch("src.tournament.random.shuffle", lambda x: x)
-def testThreeVTwoTournamentCreator():
+def testThreeVTwoTeamCreator():
     # Test case 2: ThreeVTwo tournament with 10 players
     players = [
         "Player1",
@@ -50,7 +50,7 @@ def testThreeVTwoTournamentCreator():
 
 
 @patch("src.tournament.random.shuffle", lambda x: x)
-def testThreeVThreeTournamentCreator():
+def testThreeVThreeTeamCreator():
     # Test case 3: ThreeVThree tournament with 12 players
     players = [
         "Player1",
@@ -76,7 +76,7 @@ def testThreeVThreeTournamentCreator():
 
 
 @patch("src.tournament.random.shuffle", lambda x: x)
-def testLessThanEightPlayersTournamentCreatorFails():
+def testLessThanEightPlayersTeamCreatorFails():
     # Test case 4: InvalidTournamentException - less than 8 players
     players = ["Player1", "Player2", "Player3", "Player4", "Player5"]
     try:
@@ -95,7 +95,7 @@ def testLessThanEightPlayersTournamentCreatorFails():
     ],
 )
 @patch("src.tournament.random.shuffle", lambda x: x)
-def testOtherComboTournamentCreatorFails(players):
+def testOtherComboTeamCreatorFails(players):
     try:
         teamCreator(players)
         assert False, "Expected InvalidTournamentException"

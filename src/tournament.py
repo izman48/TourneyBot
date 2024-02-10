@@ -6,7 +6,19 @@ class InvalidTournamentException(Exception):
 
 
 def teamCreator(players: list[str]) -> list[list[str]]:
+    """
+    Create teams for a tournament based on the number of players.
 
+    Args:
+        players (list[str]): A list of player names.
+
+    Returns:
+        list[list[str]]: A list of teams, where each team is represented as a list of player names.
+
+    Raises:
+        InvalidTournamentException: If the number of players is less than 8 or not supported.
+
+    """
     if len(players) < 8:
         raise InvalidTournamentException("Need at least 8 players for a tournament")
 

@@ -1,11 +1,23 @@
 import os
-import asyncio
 import discord
 from tournament import teamCreator, InvalidTournamentException
 from dotenv import load_dotenv
 
 
 class MyClient(discord.Client):
+    """
+    A custom client class for the tournament bot.
+
+    Attributes:
+        bot_id (str): The ID of the bot user.
+        my_emojis (list): A list of emojis used by the bot.
+        current_team_message (discord.Message): The current team message.
+
+    Methods:
+        on_ready(): Called when the bot is ready and logged in.
+        on_reaction_add(reaction, user): Called when a reaction is added to a message.
+        on_message(message): Called when a message is received.
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -14,10 +26,20 @@ class MyClient(discord.Client):
         self.current_team_message = None
 
     async def on_ready(self):
+        """
+        Called when the bot is ready and logged in.
+        """
         print(f"Logged on as {self.user}!")
         self.bot_id = self.user.id
 
     async def on_reaction_add(self, reaction, user):
+        """
+        Called when a reaction is added to a message.
+
+        Args:
+            reaction (discord.Reaction): The reaction that was added.
+            user (discord.User): The user who added the reaction.
+        """
         if user == self.user:
             return
         if (
@@ -47,8 +69,12 @@ class MyClient(discord.Client):
             self.current_team_message = None
 
     async def on_message(self, message):
-        if message.author == self.user:
-            return
+        """
+        Called when a message is received.
+
+        Args:
+            message (discord.Message): The message that was received.
+        """
         if message.mentions:
             if message.mentions[0].id == self.bot_id:
                 words = message.content.split()
