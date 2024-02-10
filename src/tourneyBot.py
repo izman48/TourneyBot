@@ -1,4 +1,5 @@
 import os
+import asyncio
 import discord
 from tournament import tournamentCreator, InvalidTournamentException
 from dotenv import load_dotenv
@@ -20,29 +21,49 @@ class MyClient(discord.Client):
         if message.mentions:
             if message.mentions[0].id == self.bot_id:
                 words = message.content.split()
+                if len(words) != 2:
+                    return
                 if words[1] == "help":
                     await message.channel.send(
-                        "I'm a bot that can help you create teams for a tournament if you have more than 8 people. Just type @tourney create in a voice channel and I'll take care of the rest."
+                        "```I'm a bot that can help you create teams for a tournament if you have more than 8 people. Just type @tourney create in a voice channel and I'll take care of the rest.```"
                     )
                 elif words[1] == "create":
-                    await message.channel.send("Creating Teams...")
+                    # self.players = [
+                    #     member.name
+                    #     for member in message.author.voice.channel.members
+                    #     if message.author.voice.channel
+                    # ]
                     self.players = [
-                        member.name for member in message.author.voice.channel.members
+                        "Player1",
+                        "Player2",
+                        "Player3",
+                        "Player4",
+                        "Player5",
+                        "Player6",
+                        "Player7",
+                        "Player8",
+                        "Player9",
+                        "Player10",
+                        "Player11",
                     ]
                     try:
-                        tournament = tournamentCreator(self.players)
-                        await message.channel.send(f"Teams: {tournament}")
+                        teams = tournamentCreator(self.players)
+                        teams_message = "\n".join(
+                            [
+                                f"Team {i+1}: {' '.join(players)}"
+                                for i, players in enumerate(teams)
+                            ]
+                        )
+                        await message.channel.send(f"```{teams_message}```")
                     except InvalidTournamentException as e:
-                        await message.channel.send(f"Error: {e}")
-                else:
-                    await message.channel.send("I'm not sure what you want me to do.")
+                        await message.channel.send(f"```Error: {e}```")
         print(f"Message from {message.author}: {message.content}")
 
 
 def main():
     intents = discord.Intents.default()
     client = MyClient(intents=intents)
-    client.run(token=TOKEN)
+    client.run(TOKEN)
 
 
 if __name__ == "__main__":
