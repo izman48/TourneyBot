@@ -36,12 +36,14 @@ class MyClient(discord.Client):
             )
             self.current_team_message = created_message
             for emoji in self.my_emojis:
-                await created_message.add_reaction(emoji)
+                await self.current_team_message.add_reaction(emoji)
         if (
             reaction.emoji == "✅"
             and self.current_team_message is not None
             and reaction.message.id == self.current_team_message.id
         ):
+            for emoji in self.my_emojis:
+                await self.current_team_message.remove_reaction(emoji, self.user)
             self.current_team_message = None
 
     async def on_message(self, message):
@@ -54,13 +56,11 @@ class MyClient(discord.Client):
                     return
                 if words[1] == "help":
                     await message.channel.send(
-                        "```I'm a bot that can help you create teams for a tournament if you have more than 8 people. Just type @tourney create in a voice channel and I'll take care of the rest.```"
+                        "```I'm a bot that can help you create teams for a tournament if you have more than 8 people in a voice channel. Just type @tourney create while in the voice channel and I'll take care of the rest.```"
                     )
-                elif words[1] == "create":
+                elif words[1] == "create" and not message.author.voice is None:
                     self.players = [
-                        member.name
-                        for member in message.author.voice.channel.members
-                        if message.author.voice.channel
+                        member.name for member in message.author.voice.channel.members
                     ]
                     # Use this for testing
                     # self.players = [
