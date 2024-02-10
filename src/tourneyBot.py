@@ -1,7 +1,7 @@
 import os
 import asyncio
 import discord
-from tournament import tournamentCreator, InvalidTournamentException
+from tournament import teamCreator, InvalidTournamentException
 from dotenv import load_dotenv
 
 
@@ -26,7 +26,7 @@ class MyClient(discord.Client):
             and reaction.message.id == self.current_team_message.id
         ):
             await self.current_team_message.delete()
-            teams = tournamentCreator(self.players)
+            teams = teamCreator(self.players)
             teams_message = "\n".join(
                 [f"Team {i+1}: {' '.join(players)}" for i, players in enumerate(teams)]
             )
@@ -74,7 +74,7 @@ class MyClient(discord.Client):
                     #     "Player8",
                     # ]
                     try:
-                        teams = tournamentCreator(self.players)
+                        teams = teamCreator(self.players)
                         teams_message = "\n".join(
                             [
                                 f"Team {i+1}: {' '.join(players)}"

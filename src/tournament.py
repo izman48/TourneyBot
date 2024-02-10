@@ -5,7 +5,7 @@ class InvalidTournamentException(Exception):
     pass
 
 
-def tournamentCreator(players: list[str]) -> list[list[str]]:
+def teamCreator(players: list[str]) -> list[list[str]]:
 
     if len(players) < 8:
         raise InvalidTournamentException("Need at least 8 players for a tournament")

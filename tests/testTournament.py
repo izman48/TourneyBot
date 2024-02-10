@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from src.tournament import tournamentCreator, InvalidTournamentException
+from src.tournament import teamCreator, InvalidTournamentException
 
 
 @patch("src.tournament.random.shuffle", lambda x: x)
@@ -22,7 +22,7 @@ def testTwoVTwoTournamentCreator():
         ["Player5", "Player6"],
         ["Player7", "Player8"],
     ]
-    assert tournamentCreator(players) == expected_result
+    assert teamCreator(players) == expected_result
 
 
 @patch("src.tournament.random.shuffle", lambda x: x)
@@ -46,7 +46,7 @@ def testThreeVTwoTournamentCreator():
         ["Player7", "Player8"],
         ["Player9", "Player10"],
     ]
-    assert tournamentCreator(players) == expected_result
+    assert teamCreator(players) == expected_result
 
 
 @patch("src.tournament.random.shuffle", lambda x: x)
@@ -72,7 +72,7 @@ def testThreeVThreeTournamentCreator():
         ["Player7", "Player8", "Player9"],
         ["Player10", "Player11", "Player12"],
     ]
-    assert tournamentCreator(players) == expected_result
+    assert teamCreator(players) == expected_result
 
 
 @patch("src.tournament.random.shuffle", lambda x: x)
@@ -80,7 +80,7 @@ def testLessThanEightPlayersTournamentCreatorFails():
     # Test case 4: InvalidTournamentException - less than 8 players
     players = ["Player1", "Player2", "Player3", "Player4", "Player5"]
     try:
-        tournamentCreator(players)
+        teamCreator(players)
         assert False, "Expected InvalidTournamentException"
     except InvalidTournamentException as e:
         assert str(e) == "Need at least 8 players for a tournament"
@@ -97,7 +97,7 @@ def testLessThanEightPlayersTournamentCreatorFails():
 @patch("src.tournament.random.shuffle", lambda x: x)
 def testOtherComboTournamentCreatorFails(players):
     try:
-        tournamentCreator(players)
+        teamCreator(players)
         assert False, "Expected InvalidTournamentException"
     except InvalidTournamentException as e:
         assert str(e) == "Tournament size not supported"
