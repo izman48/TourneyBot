@@ -116,15 +116,3 @@ class MyClient(discord.Client):
                             await created_message.add_reaction(emoji)
                     except InvalidTournamentException as e:
                         await message.channel.send(f"```Error: {e}```")
-
-
-def main():
-    intents = discord.Intents.default()
-    client = MyClient(intents=intents)
-    client.run(TOKEN)
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    TOKEN = os.environ["DISCORD_TOKEN"]
-    main()
