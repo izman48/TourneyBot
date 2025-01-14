@@ -96,6 +96,7 @@ class MyClient(discord.Client):
                     self.players = [
                         member.name for member in message.author.voice.channel.members
                     ]
+
                     try:
                         teams = teamCreator(self.players)
                         self.teams = teams
