@@ -49,9 +49,4 @@ def tournamentGenerator(teams: list[list[str]]) -> str:
     """
     random.shuffle(teams)
     # return team 1 vs team 2, team 3 vs team 4, etc.
-    return "\n".join(
-        [
-            f"{' '.join(teams[i])} vs {' '.join(teams[i+1])}"
-            for i in range(0, len(teams), 2)
-        ]
-    )
+    return "\n".join([f"{' '.join(teams[i])} vs {' '.join(teams[i+1])}" for i in range(0, len(teams), 2)])
