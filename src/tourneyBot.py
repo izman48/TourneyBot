@@ -1,6 +1,6 @@
 import os
 import discord
-from tournament import teamCreator, tournamentGenerator, InvalidTournamentException
+from src.tournament import teamCreator, tournamentGenerator, InvalidTournamentException
 from dotenv import load_dotenv
 
 
@@ -25,6 +25,7 @@ class MyClient(discord.Client):
         self.my_emojis = ["🔁", "✅"]
         self.current_team_message = None
         self.teams = []
+        self.tournament_creator = 0
 
     async def on_ready(self):
         """
@@ -47,6 +48,7 @@ class MyClient(discord.Client):
             reaction.emoji == "🔁"
             and self.current_team_message is not None
             and reaction.message.id == self.current_team_message.id
+            and user.id == self.tournament_creator
         ):
             await self.current_team_message.delete()
             teams = teamCreator(self.players)
@@ -65,6 +67,7 @@ class MyClient(discord.Client):
             reaction.emoji == "✅"
             and self.current_team_message is not None
             and reaction.message.id == self.current_team_message.id
+            and user.id == self.tournament_creator
         ):
             for emoji in self.my_emojis:
                 await self.current_team_message.remove_reaction(emoji, self.user)
@@ -93,17 +96,7 @@ class MyClient(discord.Client):
                     self.players = [
                         member.name for member in message.author.voice.channel.members
                     ]
-                    # Use this for testing
-                    self.players = [
-                        "Player1",
-                        "Player2",
-                        "Player3",
-                        "Player4",
-                        "Player5",
-                        "Player6",
-                        "Player7",
-                        "Player8",
-                    ]
+
                     try:
                         teams = teamCreator(self.players)
                         self.teams = teams
@@ -118,6 +111,7 @@ class MyClient(discord.Client):
                             f"```{teams_message}```"
                         )
                         self.current_team_message = created_message
+                        self.tournament_creator = message.author.id
                         for emoji in self.my_emojis:
                             await created_message.add_reaction(emoji)
                     except InvalidTournamentException as e:
