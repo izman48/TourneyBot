@@ -1,22 +1,23 @@
-import os
 import discord
 from discord import app_commands
+from discord.interactions import Interaction
 from src.tournament import teamCreator, tournamentGenerator, InvalidTournamentException
-from dotenv import load_dotenv
-from typing import Set
+from typing import Set, List, Optional
 
 # Constants for setup command
 SETUP_ROLE_ID = 759395917924139038
 ADMIN_ROLE_IDS: Set[int] = {858401896930082868, 480422236243623936}
+TOURNAMENT_EMOJIS = ["🔁", "✅"]
+MAX_NICKNAME_LENGTH = 32
 
 
-class MyClient(discord.Client):
+class DudeBot(discord.Client):
     """
     A custom client class for the tournament bot.
 
     Attributes:
         bot_id (str): The ID of the bot user.
-        my_emojis (list): A list of emojis used by the bot.
+        tournament_emojis (list): A list of emojis used by the bot.
         current_team_message (discord.Message): The current team message.
         tree (app_commands.CommandTree): The command tree for slash commands.
     """
@@ -30,11 +31,12 @@ class MyClient(discord.Client):
         kwargs["intents"] = intents
         super().__init__(*args, **kwargs)
 
-        self.bot_id = ""
-        self.my_emojis = ["🔁", "✅"]
-        self.current_team_message = None
-        self.teams = []
-        self.tournament_creator = 0
+        self.bot_id: str = ""
+        self.tournament_emojis: List[str] = TOURNAMENT_EMOJIS
+        self.current_team_message: Optional[discord.Message] = None
+        self.teams: List[List[str]] = []
+        self.tournament_creator: int = 0
+        self.players: List[str] = []
 
         # Set up command tree for slash commands
         self.tree = app_commands.CommandTree(self)
@@ -43,7 +45,7 @@ class MyClient(discord.Client):
         @self.tree.command()
         @app_commands.checks.has_any_role(*ADMIN_ROLE_IDS)
         async def setup(
-            interaction: discord.Interaction,
+            interaction: Interaction,
             member: discord.Member,
             first_name: str,
             last_initial: str,
@@ -58,16 +60,38 @@ class MyClient(discord.Client):
             last_initial : The member's last initial (single letter)
             """
             try:
+                # Check if the user has already been setup
+                guild = interaction.guild
+                if guild is None:
+                    await interaction.response.send_message(
+                        "This command can only be used in a server.",
+                        ephemeral=True,
+                    )
+                    return
+
+                setup_role = guild.get_role(SETUP_ROLE_ID)
+                is_already_setup = (
+                    setup_role not in member.roles
+                    and member.nick is not None
+                    and member.nick != member.name
+                )
+
+                if is_already_setup:
+                    await interaction.response.send_message(
+                        f"{member.mention} has already been set up.",
+                        ephemeral=True,
+                    )
+                    return
+
                 # Get current nickname or username if no nickname
-                current_name = member.nick if member.nick else member.name
+                current_name = member.name
 
                 # Format the new nickname: FirstName "CurrentName" LastInitial
                 # Calculate how much space we have for the middle part
                 # Format is: FirstName + space + quote + CurrentName + quote + space + LastInitial
                 # So we need 5 extra characters (2 spaces, 2 quotes, and a buffer of 1)
-                max_length = 32
-                extras = len(first_name) + 5 + len(last_initial)
-                available_space = max_length - extras
+                extras_length = len(first_name) + 5 + len(last_initial)
+                available_space = MAX_NICKNAME_LENGTH - extras_length
 
                 # Truncate the current name if needed
                 if len(current_name) > available_space:
@@ -79,7 +103,7 @@ class MyClient(discord.Client):
                 new_nickname = f'{first_name} "{truncated_name}" {last_initial}'
 
                 # Final check to ensure we're within limits
-                if len(new_nickname) > 32:
+                if len(new_nickname) > MAX_NICKNAME_LENGTH:
                     # If still too long, reduce the first name or use initials
                     new_nickname = (
                         f'{first_name[:1]}. "{truncated_name}" {last_initial}'
@@ -88,7 +112,11 @@ class MyClient(discord.Client):
                 await member.edit(nick=new_nickname)
 
                 # Remove setup role if they have it
-                setup_role = interaction.guild.get_role(SETUP_ROLE_ID)
+                guild = interaction.guild
+                if guild is None:
+                    return
+
+                setup_role = guild.get_role(SETUP_ROLE_ID)
                 if setup_role in member.roles:
                     await member.remove_roles(setup_role)
 
@@ -110,7 +138,7 @@ class MyClient(discord.Client):
 
         @setup.error
         async def setup_error(
-            interaction: discord.Interaction, error: app_commands.AppCommandError
+            interaction: Interaction, error: app_commands.AppCommandError
         ):
             if isinstance(error, app_commands.MissingAnyRole):
                 await interaction.response.send_message(
@@ -134,7 +162,7 @@ class MyClient(discord.Client):
         print(f"Logged on as {self.user}!")
         self.bot_id = self.user.id
 
-    async def on_reaction_add(self, reaction, user):
+    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.User):
         """
         Called when a reaction is added to a message.
 
@@ -154,14 +182,17 @@ class MyClient(discord.Client):
             teams = teamCreator(self.players)
             self.teams = teams
             teams_message = "\n".join(
-                [f"Team {i+1}: {' '.join(players)}" for i, players in enumerate(teams)]
+                [
+                    f"Team {i + 1}: {' '.join(players)}"
+                    for i, players in enumerate(teams)
+                ]
             )
 
             created_message = await reaction.message.channel.send(
                 f"```{teams_message}```"
             )
             self.current_team_message = created_message
-            for emoji in self.my_emojis:
+            for emoji in self.tournament_emojis:
                 await self.current_team_message.add_reaction(emoji)
         if (
             reaction.emoji == "✅"
@@ -169,50 +200,75 @@ class MyClient(discord.Client):
             and reaction.message.id == self.current_team_message.id
             and user.id == self.tournament_creator
         ):
-            for emoji in self.my_emojis:
+            for emoji in self.tournament_emojis:
                 await self.current_team_message.remove_reaction(emoji, self.user)
             await self.current_team_message.channel.send(
                 f"```{tournamentGenerator(self.teams)}```"
             )
             self.current_team_message = None
 
-    async def on_message(self, message):
+    async def on_message(self, message: discord.Message):
         """
         Called when a message is received.
 
         Args:
             message (discord.Message): The message that was received.
         """
-        if message.mentions:
-            if message.mentions[0].id == self.bot_id:
-                words = message.content.split()
-                if len(words) != 2:
-                    return
-                if words[1] == "help":
-                    await message.channel.send(
-                        "```I'm a bot that can help you create teams for a tournament if you have more than 8 people in a voice channel. Just type @tourney create while in the voice channel and I'll take care of the rest.```"
-                    )
-                elif words[1] == "create" and not message.author.voice is None:
-                    self.players = [
-                        member.name for member in message.author.voice.channel.members
+        if not message.mentions or message.mentions[0].id != self.bot_id:
+            return
+
+        command_parts = message.content.split()
+        if len(command_parts) != 2:
+            return
+
+        command = command_parts[1].lower()
+
+        if command == "help":
+            await message.channel.send(
+                "```I'm a bot that can help you create teams for a tournament "
+                "if you have more than 8 people in a voice channel. "
+                "Just type @tourney create while in the voice channel and I'll take care of the rest.```"
+            )
+        elif command == "create":
+            # Check if author has voice state and is in a voice channel
+            if not isinstance(message.author, discord.Member):
+                await message.channel.send(
+                    "```Error: Command must be used in a server.```"
+                )
+                return
+
+            if not message.author.voice or not message.author.voice.channel:
+                await message.channel.send(
+                    "```Error: You must be in a voice channel to use this command.```"
+                )
+                return
+
+            voice_channel = message.author.voice.channel
+
+            # Check if the voice channel is a type that has members
+            if not hasattr(voice_channel, "members"):
+                await message.channel.send(
+                    "```Error: Cannot get members from this type of voice channel.```"
+                )
+                return
+
+            self.players = [member.name for member in voice_channel.members]
+
+            try:
+                teams = teamCreator(self.players)
+                self.teams = teams
+                teams_message = "\n".join(
+                    [
+                        f"Team {i + 1}: {' '.join(players)}"
+                        for i, players in enumerate(teams)
                     ]
+                )
 
-                    try:
-                        teams = teamCreator(self.players)
-                        self.teams = teams
-                        teams_message = "\n".join(
-                            [
-                                f"Team {i+1}: {' '.join(players)}"
-                                for i, players in enumerate(teams)
-                            ]
-                        )
+                created_message = await message.channel.send(f"```{teams_message}```")
+                self.current_team_message = created_message
+                self.tournament_creator = message.author.id
 
-                        created_message = await message.channel.send(
-                            f"```{teams_message}```"
-                        )
-                        self.current_team_message = created_message
-                        self.tournament_creator = message.author.id
-                        for emoji in self.my_emojis:
-                            await created_message.add_reaction(emoji)
-                    except InvalidTournamentException as e:
-                        await message.channel.send(f"```Error: {e}```")
+                for emoji in self.tournament_emojis:
+                    await created_message.add_reaction(emoji)
+            except InvalidTournamentException as e:
+                await message.channel.send(f"```Error: {e}```")

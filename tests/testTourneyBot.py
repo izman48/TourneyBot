@@ -2,12 +2,12 @@ import pytest
 import pytest_asyncio
 import discord
 from unittest.mock import Mock, AsyncMock, patch
-from src.tourneyBot import MyClient
+from src.tourneyBot import DudeBot
 
 
 @pytest_asyncio.fixture
 async def client():
-    client = MyClient()
+    client = DudeBot()
     client.bot_id = "123"
     return client
 

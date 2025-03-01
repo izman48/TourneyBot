@@ -2,7 +2,7 @@ import pytest
 import discord
 from discord import app_commands
 from unittest.mock import AsyncMock, Mock, patch, MagicMock
-from src.tourneyBot import MyClient, SETUP_ROLE_ID, ADMIN_ROLE_IDS
+from src.tourneyBot import DudeBot, SETUP_ROLE_ID, ADMIN_ROLE_IDS
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ def mock_admin_role():
 @pytest.fixture
 def mock_client():
     """Creates a mock client with the command tree."""
-    client = Mock(spec=MyClient)
+    client = Mock(spec=DudeBot)
     client.tree = Mock(spec=app_commands.CommandTree)
     return client
 
@@ -58,6 +58,21 @@ def setup_command():
 
     async def mock_setup_callback(interaction, member, first_name, last_initial):
         try:
+            # Check if the user has already been setup
+            setup_role = interaction.guild.get_role(SETUP_ROLE_ID)
+            is_already_setup = (
+                setup_role not in member.roles
+                and member.nick is not None
+                and member.nick != member.name
+            )
+
+            if is_already_setup:
+                await interaction.response.send_message(
+                    f"{member.mention} has already been set up.",
+                    ephemeral=True,
+                )
+                return
+
             # Get current nickname or username if no nickname
             current_name = member.nick if member.nick else member.name
 
@@ -340,16 +355,38 @@ async def test_setup_error_handler_missing_role(mock_interaction, setup_command)
 
 @pytest.mark.asyncio
 async def test_setup_error_handler_general_error(mock_interaction, setup_command):
-    """Test that the setup_error handler correctly handles general errors."""
+    """Test that the error handler handles general errors correctly."""
+    error = Exception("Test error")
+    await setup_command.error(mock_interaction, error)
+    mock_interaction.response.send_message.assert_called_once_with(
+        "An error occurred: Test error", ephemeral=True
+    )
+
+
+@pytest.mark.asyncio
+async def test_setup_already_setup_user(
+    mock_interaction, mock_member, mock_setup_role, setup_command
+):
+    """Test that the setup command detects users that are already set up."""
     # Arrange
-    error = Exception("Something went wrong")
+    # Configure the member to appear already set up
+    # Has a nickname different from username and doesn't have the setup role
+    mock_member.nick = "Already Set Up"
+    mock_member.name = "original_username"
+    mock_member.roles = []  # No setup role
+
+    # Configure guild to return the setup role
+    mock_interaction.guild.get_role.return_value = mock_setup_role
 
     # Act
-    await setup_command.error(mock_interaction, error)
+    await setup_command.callback(mock_interaction, mock_member, "First", "L")
 
     # Assert
-    mock_interaction.response.send_message.assert_called_once()
-    args, kwargs = mock_interaction.response.send_message.call_args
-    assert "error occurred" in args[0].lower()
-    assert "Something went wrong" in args[0]
-    assert kwargs.get("ephemeral") is True
+    mock_interaction.response.send_message.assert_called_once_with(
+        f"{mock_member.mention} has already been set up.",
+        ephemeral=True,
+    )
+
+    # Verify no edits were made to the member
+    mock_member.edit.assert_not_called()
+    mock_member.remove_roles.assert_not_called()

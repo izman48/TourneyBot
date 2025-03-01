@@ -1,7 +1,7 @@
-from src.tourneyBot import MyClient
+from src.tourneyBot import DudeBot
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-client = MyClient()
+client = DudeBot()
 client.run(os.getenv("DISCORD_TOKEN"))
