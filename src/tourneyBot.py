@@ -1,7 +1,13 @@
 import os
 import discord
+from discord import app_commands
 from src.tournament import teamCreator, tournamentGenerator, InvalidTournamentException
 from dotenv import load_dotenv
+from typing import Set
+
+# Constants for setup command
+SETUP_ROLE_ID = 759395917924139038
+ADMIN_ROLE_IDS: Set[int] = {858401896930082868, 480422236243623936}
 
 
 class MyClient(discord.Client):
@@ -12,20 +18,114 @@ class MyClient(discord.Client):
         bot_id (str): The ID of the bot user.
         my_emojis (list): A list of emojis used by the bot.
         current_team_message (discord.Message): The current team message.
-
-    Methods:
-        on_ready(): Called when the bot is ready and logged in.
-        on_reaction_add(reaction, user): Called when a reaction is added to a message.
-        on_message(message): Called when a message is received.
+        tree (app_commands.CommandTree): The command tree for slash commands.
     """
 
     def __init__(self, *args, **kwargs):
+        # Set up intents for the required permissions
+        intents = discord.Intents.default()
+        intents.message_content = True
+        intents.members = True
+        intents.reactions = True
+        kwargs["intents"] = intents
         super().__init__(*args, **kwargs)
+
         self.bot_id = ""
         self.my_emojis = ["🔁", "✅"]
         self.current_team_message = None
         self.teams = []
         self.tournament_creator = 0
+
+        # Set up command tree for slash commands
+        self.tree = app_commands.CommandTree(self)
+
+        # Register the setup command
+        @self.tree.command()
+        @app_commands.checks.has_any_role(*ADMIN_ROLE_IDS)
+        async def setup(
+            interaction: discord.Interaction,
+            member: discord.Member,
+            first_name: str,
+            last_initial: str,
+        ):
+            """
+            Setup a user by changing their nickname and removing the setup role.
+
+            Parameters
+            ----------
+            member : The member to setup
+            first_name : The member's first name
+            last_initial : The member's last initial (single letter)
+            """
+            try:
+                # Get current nickname or username if no nickname
+                current_name = member.nick if member.nick else member.name
+
+                # Format the new nickname: FirstName "CurrentName" LastInitial
+                # Calculate how much space we have for the middle part
+                # Format is: FirstName + space + quote + CurrentName + quote + space + LastInitial
+                # So we need 5 extra characters (2 spaces, 2 quotes, and a buffer of 1)
+                max_length = 32
+                extras = len(first_name) + 5 + len(last_initial)
+                available_space = max_length - extras
+
+                # Truncate the current name if needed
+                if len(current_name) > available_space:
+                    truncated_name = current_name[: available_space - 3] + "..."
+                else:
+                    truncated_name = current_name
+
+                # Create the new nickname
+                new_nickname = f'{first_name} "{truncated_name}" {last_initial}'
+
+                # Final check to ensure we're within limits
+                if len(new_nickname) > 32:
+                    # If still too long, reduce the first name or use initials
+                    new_nickname = (
+                        f'{first_name[:1]}. "{truncated_name}" {last_initial}'
+                    )
+
+                await member.edit(nick=new_nickname)
+
+                # Remove setup role if they have it
+                setup_role = interaction.guild.get_role(SETUP_ROLE_ID)
+                if setup_role in member.roles:
+                    await member.remove_roles(setup_role)
+
+                await interaction.response.send_message(
+                    f"Successfully set up {member.mention}:\n"
+                    f"• Changed nickname to: {new_nickname}\n"
+                    f"• Removed setup role",
+                    ephemeral=True,
+                )
+            except discord.Forbidden:
+                await interaction.response.send_message(
+                    "I don't have permission to modify this user's nickname or roles.",
+                    ephemeral=True,
+                )
+            except Exception as e:
+                await interaction.response.send_message(
+                    f"An error occurred: {str(e)}", ephemeral=True
+                )
+
+        @setup.error
+        async def setup_error(
+            interaction: discord.Interaction, error: app_commands.AppCommandError
+        ):
+            if isinstance(error, app_commands.MissingAnyRole):
+                await interaction.response.send_message(
+                    "You don't have permission to use this command.", ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    f"An error occurred: {str(error)}", ephemeral=True
+                )
+
+    async def setup_hook(self):
+        """
+        Called when the bot is setting up. Used to sync the command tree.
+        """
+        await self.tree.sync()
 
     async def on_ready(self):
         """
